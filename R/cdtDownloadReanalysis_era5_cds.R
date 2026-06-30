@@ -17,11 +17,20 @@ era5.cds.coverage <- function(GalParams){
         return(out)
     }
     ret <- httr::content(ret)
+
+    parse_cds_time <- function(x){
+        if(is.null(x) || is.na(x) || x == "") return(NA)
+        # CDS may return either ...Z or ...+00:00 timestamps.
+        x <- gsub("([+-][0-9]{2}):([0-9]{2})$", "\\1\\2", x)
+        x <- gsub("Z$", "+0000", x)
+        as.POSIXct(x, format = "%Y-%m-%dT%H:%M:%S%z", tz = "UTC")
+    }
+
     start_d <- ret$extent$temporal$interval[[1]][[1]]
-    start_d <- as.POSIXct(start_d, format = "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+    start_d <- parse_cds_time(start_d)
     out$start <- format(start_d, "%Y-%m-%d %H:%M:%S")
     end_d <- ret$extent$temporal$interval[[1]][[2]]
-    end_d <- as.POSIXct(end_d, format = "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+    end_d <- parse_cds_time(end_d)
     out$end <- format(end_d, "%Y-%m-%d %H:%M:%S")
 
     return(out)
