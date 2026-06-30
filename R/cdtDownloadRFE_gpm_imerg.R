@@ -201,11 +201,11 @@ gpm_imerg.info.gesdisc <- function(GalParams){
             ## version 7
             version <- '07'
             dataset <- "GPM_3IMERGDF.07"
-            nc4format <- "3B-DAY.MS.MRG.3IMERG.%s-S000000-E235959.V07B.nc4.nc4"
+            nc4format <- "3B-DAY.MS.MRG.3IMERG.%s-S000000-E235959.V07C.nc4.nc4"
             ncvarid <- 'precipitation'
             ncformat <- "imerg_final_%s%s%s.nc"
             type <- "FINAL"
-            # https://gpm1.gesdisc.eosdis.nasa.gov/opendap/GPM_L3/GPM_3IMERGDF.07/2024/06/3B-DAY.MS.MRG.3IMERG.20240630-S000000-E235959.V07B.nc4
+            # https://gpm1.gesdisc.eosdis.nasa.gov/opendap/GPM_L3/GPM_3IMERGDF.07/2026/06/3B-DAY.MS.MRG.3IMERG.20260601-S000000-E235959.V07C.nc4
         }else if(GalParams$rfe.src == "gpm.imerg.l-gb"){
             ## version 6
             # version <- '06'
@@ -218,11 +218,11 @@ gpm_imerg.info.gesdisc <- function(GalParams){
             ## version 7
             version <- '07'
             dataset <- "GPM_3IMERGDL.07"
-            nc4format <- "3B-DAY-L.MS.MRG.3IMERG.%s-S000000-E235959.V07B.nc4.nc4"
+            nc4format <- "3B-DAY-L.MS.MRG.3IMERG.%s-S000000-E235959.V07C.nc4.nc4"
             ncvarid <- 'precipitation'
             ncformat <- "imerg_late_%s%s%s.nc"
             type <- "LATE"
-            # https://gpm1.gesdisc.eosdis.nasa.gov/opendap/GPM_L3/GPM_3IMERGDL.07/2024/11/3B-DAY-L.MS.MRG.3IMERG.20241118-S000000-E235959.V07B.nc4
+            # https://gpm1.gesdisc.eosdis.nasa.gov/opendap/GPM_L3/GPM_3IMERGDL.07/2026/06/3B-DAY-L.MS.MRG.3IMERG.20260601-S000000-E235959.V07C.nc4
         }else if(GalParams$rfe.src == "gpm.imerg.e-gb"){
             ## version 6
             # version <- '06'
@@ -235,11 +235,11 @@ gpm_imerg.info.gesdisc <- function(GalParams){
             ## version 7
             version <- '07'
             dataset <- "GPM_3IMERGDE.07"
-            nc4format <- "3B-DAY-E.MS.MRG.3IMERG.%s-S000000-E235959.V07B.nc4.nc4"
+            nc4format <- "3B-DAY-E.MS.MRG.3IMERG.%s-S000000-E235959.V07C.nc4.nc4"
             ncvarid <- 'precipitation'
             ncformat <- "imerg_early_%s%s%s.nc"
             type <- "EARLY"
-            # https://gpm1.gesdisc.eosdis.nasa.gov/opendap/GPM_L3/GPM_3IMERGDE.07/2024/11/3B-DAY-E.MS.MRG.3IMERG.20241118-S000000-E235959.V07B.nc4
+            # https://gpm1.gesdisc.eosdis.nasa.gov/opendap/GPM_L3/GPM_3IMERGDE.07/2026/06/3B-DAY-E.MS.MRG.3IMERG.20260601-S000000-E235959.V07C.nc4
         }else return(NULL)
 
         dd <- paste0(rdate[, 1], rdate[, 2], rdate[, 3])
