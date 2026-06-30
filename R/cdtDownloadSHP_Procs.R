@@ -28,7 +28,19 @@ ExecDownload_GADM <- function(){
     if(inherits(ret, "try-error")){
         Insert.Messages.Out(.cdtData$GalParams[['message']][['5']], format = TRUE)
         Insert.Messages.Out(gsub('[\r\n]', '', ret[1]), format = TRUE)
-        return(NULL)
+
+        fallback <- try(download_admin_boundaries_geoboundaries(
+            iso3 = .cdtData$GalParams$cntr_iso3,
+            level = .cdtData$GalParams$level,
+            dir2save = .cdtData$GalParams$dir2save,
+            layer = layer
+        ), silent = TRUE)
+
+        if(inherits(fallback, "try-error")) return(NULL)
+
+        Insert.Messages.Out("Downloaded administrative boundaries from geoBoundaries fallback source.", TRUE, "i")
+        Insert.Messages.Out(.cdtData$GalParams[['message']][['4']], TRUE, "s")
+        return(0)
     }
 
     if(.cdtData$GalParams$version == '4.1'){
@@ -56,4 +68,26 @@ ExecDownload_GADM <- function(){
 
     Insert.Messages.Out(.cdtData$GalParams[['message']][['4']], TRUE, "s")
     return(0)
+}
+
+download_admin_boundaries_geoboundaries <- function(iso3, level, dir2save, layer){
+    api_url <- sprintf("https://www.geoboundaries.org/api/current/gbOpen/%s/ADM%s/", iso3, level)
+    meta <- try(jsonlite::fromJSON(api_url), silent = TRUE)
+    if(inherits(meta, "try-error") || is.null(meta$gjDownloadURL)){
+        stop("Unable to retrieve administrative boundaries metadata from geoBoundaries.")
+    }
+
+    dest_geojson <- file.path(dir2save, paste0(layer, ".geojson"))
+    shpfile <- file.path(dir2save, paste0(layer, '.shp'))
+    on.exit(unlink(dest_geojson), add = TRUE)
+
+    ret <- try(curl::curl_download(meta$gjDownloadURL, dest_geojson), silent = TRUE)
+    if(inherits(ret, "try-error")){
+        stop(gsub('[\r\n]', '', ret[1]))
+    }
+
+    shp <- sf::st_read(dest_geojson, quiet = TRUE)
+    sf::st_write(shp, shpfile, driver = "ESRI Shapefile", quiet = TRUE, append = FALSE)
+
+    invisible(shpfile)
 }
