@@ -87,6 +87,15 @@ opendap.gesdisc.dates <- function(url, type, fileformat = NA, datetype = NA, dir
     if(length(tmp) == 0) return(NULL)
 
     if(type == 'file'){
+        # Keep only entries that match the expected filename structure.
+        # Some GES DISC listings include extra OPeNDAP variants that break
+        # date extraction when treated as canonical data files.
+        txt <- strsplit(fileformat, "%s", fixed = TRUE)[[1]]
+        txt <- double_backslash_non_alnum(txt)
+        filepattern <- paste0('^', paste(txt, collapse = '[[:digit:]]+'), '$')
+        tmp <- tmp[grepl(filepattern, tmp)]
+        if(length(tmp) == 0) return(NULL)
+
         ret <- extract_filename_dates(tmp, fileformat)
         if(is.null(ret)) return(NULL)
         ret <- gsub('[^[:digit:]]', '', ret)
