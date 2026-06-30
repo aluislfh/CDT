@@ -66,6 +66,13 @@ era5.cds.download <- function(GalParams, nbfile = 1, GUI = TRUE, verbose = TRUE)
         return(NULL)
     }
 
+    if(identical(era5_prod$resource, "reanalysis-era5-single-levels") &&
+       GalParams$var %in% c("tmax", "tmin")){
+        Insert.Messages.Out("ERA5 hourly single-level requests for Tmax/Tmin are not currently supported by CDS through this workflow.", TRUE, "e")
+        Insert.Messages.Out("Use ERA5 air temperature (tair) and aggregate it locally to daily maximum or minimum.", TRUE, "e")
+        return(NULL)
+    }
+
     opts <- get_reanalysis.variables(era5_prod$pars.file)
     opts <- opts[[GalParams$var]]
 
@@ -78,9 +85,9 @@ era5.cds.download <- function(GalParams, nbfile = 1, GUI = TRUE, verbose = TRUE)
     }
 
     request <- list(
-        dataset_short_name = "reanalysis-era5-single-levels",
+        dataset_short_name = era5_prod$resource,
         product_type = 'reanalysis',
-        format = 'netcdf',
+        data_format = 'netcdf',
         download_format = 'unarchived',
         variable = opts$api_var,
         area = area
@@ -136,26 +143,26 @@ era5.download.data <- function(lnk, dest, ncfl, pars){
     }
 
     task_url <- resc$links[[2]]$href
+    job_url <- NULL
     count <- 0
 
-    while(task_status != "successful"){
+    while(task_status %in% c("queued", "accepted", "running")){
         Sys.sleep(3)
         res <- era5.cds.retrieve.task(task_url, pars$api_pat)
         if(is.null(res)){
             if(count > 10){
                 break
             }else{
-                next
                 count <- count + 1
+                next
             }
-            
         }
         if(httr::status_code(res) > 300){
             if(count > 10){
                 break
             }else{
-                next
                 count <- count + 1
+                next
             }
         }
         resc <- httr::content(res)
@@ -163,6 +170,12 @@ era5.download.data <- function(lnk, dest, ncfl, pars){
         if(task_status == "successful"){
             task_url <- resc$links[[2]]$href
             job_url <- resc$links[[1]]$href
+        }else if(task_status == "failed"){
+            Insert.Messages.Out("INFO Request failed", TRUE, "e")
+            if(!is.null(resc$message)) Insert.Messages.Out(paste('Message:', resc$message), TRUE, "e")
+            if(!is.null(resc$reason)) Insert.Messages.Out(paste('Reason:', resc$reason), TRUE, "e")
+            if(!is.null(resc$detail)) Insert.Messages.Out(paste('Detail:', resc$detail), TRUE, "e")
+            return(xx)
         }else{
             task_url <- resc$links[[1]]$href
         }
@@ -243,20 +256,43 @@ era5.cds.format.data <- function(ncfl, pars){
 
 era5.cds.send.request <- function(url_api, pat, request){
     httr_headers <- httr::add_headers("PRIVATE-TOKEN" = pat)
-    res <- try(httr::VERB("POST", url_api, httr_headers,
-                          body = list(inputs = request),
-                          encode = "json"),
-               silent = TRUE)
-    if(inherits(res, "try-error")){
-        Insert.Messages.Out(gsub('[\r\n]', '', res[1]), TRUE, "e")
-        res <- NULL
-    }
-    if (httr::http_error(res)){
-        rep <- httr::content(res)
-        Insert.Messages.Out(paste('Failed: sending request to', rep$instance), TRUE, "e")
-        Insert.Messages.Out(paste('Message:', rep$title), TRUE, "e")
-        Insert.Messages.Out(paste('Detail', rep$detail), TRUE, "e")
-        res <- NULL
+    res <- NULL
+    for(i in 1:3){
+        res <- try(httr::VERB("POST", url_api, httr_headers,
+                              body = list(inputs = request),
+                              encode = "json"),
+                   silent = TRUE)
+        if(inherits(res, "try-error")){
+            if(i < 3){
+                Sys.sleep(2)
+                next
+            }
+            Insert.Messages.Out(gsub('[\r\n]', '', res[1]), TRUE, "e")
+            res <- NULL
+            break
+        }
+
+        if(httr::http_error(res)){
+            rep <- try(httr::content(res), silent = TRUE)
+            txt <- try(httr::content(res, 'text'), silent = TRUE)
+
+            if(i < 3 && httr::status_code(res) >= 500){
+                Sys.sleep(2)
+                next
+            }
+
+            inst <- if(!inherits(rep, "try-error") && !is.null(rep$instance)) rep$instance else url_api
+            msg <- if(!inherits(rep, "try-error") && !is.null(rep$title)) rep$title else "Request rejected by CDS API"
+            det <- if(!inherits(rep, "try-error") && !is.null(rep$detail)) rep$detail else if(!inherits(txt, "try-error")) txt else ""
+
+            Insert.Messages.Out(paste('Failed: sending request to', inst), TRUE, "e")
+            Insert.Messages.Out(paste('Message:', msg), TRUE, "e")
+            if(nchar(det) > 0) Insert.Messages.Out(paste('Detail:', det), TRUE, "e")
+            res <- NULL
+            break
+        }
+
+        break
     }
 
     return(res)
@@ -305,10 +341,27 @@ era5.cds.write.data <- function(task_url, dest, pat){
 
     ## write to disk
     Insert.Messages.Out(paste("Downloading data:", basename(dest)), TRUE, "i")
-    res <- httr::GET(nc_url, httr::write_disk(dest, overwrite = TRUE))
-    if(httr::status_code(res) != 200){
+
+    res <- NULL
+    for(i in 1:3){
+        res <- try(httr::GET(nc_url, httr::write_disk(dest, overwrite = TRUE)), silent = TRUE)
+        if(inherits(res, "try-error")){
+            if(i < 3){
+                Sys.sleep(2)
+                next
+            }
+            Insert.Messages.Out(paste("Downloading", basename(dest), "failed"), TRUE, "e")
+            Insert.Messages.Out(gsub('[\r\n]', '', res[1]), TRUE, "e")
+            return(NULL)
+        }
+        if(httr::status_code(res) == 200) break
+        if(i < 3){
+            Sys.sleep(2)
+            next
+        }
         Insert.Messages.Out(paste("Downloading", basename(dest), "failed"), TRUE, "e")
-        Insert.Messages.Out(httr::content(res, 'text'))
+        txt <- try(httr::content(res, 'text'), silent = TRUE)
+        if(!inherits(txt, "try-error")) Insert.Messages.Out(txt, TRUE, "e")
         return(NULL)
     }
 
