@@ -3,6 +3,8 @@ gsmap.download.jaxa <- function(GalParams, nbfile = 3, GUI = TRUE, verbose = TRU
     info <- gsmap.info.jaxa(GalParams)
     if(is.null(info)) return(-3)
 
+    login <- gsmap.normalize.login(GalParams$login)
+
     data.name <- paste0(info$dataname, '_', info$data.tres)
     outdir <- file.path(GalParams$dir2save, data.name)
     extrdir <- file.path(outdir, "Extracted")
@@ -14,16 +16,32 @@ gsmap.download.jaxa <- function(GalParams, nbfile = 3, GUI = TRUE, verbose = TRU
     destfiles <- file.path(origdir, info$filename)
     ncfiles <- file.path(extrdir, info$ncfiles)
 
-    handle <- curl::new_handle()
-    curl::handle_setopt(handle,
-                        username = GalParams$login$usr,
-                        password = GalParams$login$pwd)
-    on.exit(curl::handle_reset(handle))
-
     ret <- cdt.download.data(info$urls, destfiles, ncfiles, nbfile, GUI,
                              verbose, data.name, gsmap.download.data,
-                             bbox = GalParams$bbox, handle = handle,
+                             bbox = GalParams$bbox, login = login,
                              pars = info$pars)
+
+    if(ret == 1){
+        errf <- file.path(outdir, "error.txt")
+        if(file.exists(errf)){
+            emsg <- readLines(errf, warn = FALSE)
+            emsg <- trimws(emsg)
+            emsg <- emsg[emsg != ""]
+            if(length(emsg) > 0){
+                kind <- gsmap.classify.ftp.error(emsg[1])
+                if(kind == "missing"){
+                    msg <- paste0("Some requested GSMaP files are not available on FTP. ",
+                                  "For this product, available data start at ", info$start_d,
+                                  ". Adjust the requested date range.")
+                    Insert.Messages.Out(msg, TRUE, "w", GUI)
+                }else if(kind == "auth"){
+                    Insert.Messages.Out("GSMaP FTP authentication failed. Use UID only in username (e.g. rainmap) and verify password.", TRUE, "e", GUI)
+                }else if(kind == "network"){
+                    Insert.Messages.Out("GSMaP FTP connection failed. Check internet/VPN/firewall and retry.", TRUE, "e", GUI)
+                }
+            }
+        }
+    }
 
     return(ret)
 }
@@ -35,6 +53,7 @@ gsmap.coverage.jaxa <- function(GalParams){
         timestep <- GalParams$tstep
     }
     out <- list(name = GalParams$rfe.src, timestep = timestep)
+    login <- gsmap.normalize.login(GalParams$login)
 
     info <- gsmap.info.jaxa(GalParams)
     if(is.null(info)) return(out)
@@ -43,13 +62,13 @@ gsmap.coverage.jaxa <- function(GalParams){
     out$name <- paste0(dataname, collapse = ' ')
 
     url <- file.path(info$baseurl, info$dirpath, '')
-    tmp <- gsmap.jaxa.dates(url, GalParams$login, 'directory')
+    tmp <- gsmap.jaxa.dates(url, login, 'directory')
     if(is.null(tmp)) return(out)
     end_d <- tmp[length(tmp)]
     url <- file.path(info$baseurl, info$dirpath, end_d, '')
 
     if(info$deppath == 1){
-        end_d <- gsmap.jaxa.dates(url, GalParams$login, 'file', info$fileformat)
+        end_d <- gsmap.jaxa.dates(url, login, 'file', info$fileformat)
         if(is.null(end_d)) return(out)
         end_d <- end_d[length(end_d)]
 
@@ -60,15 +79,15 @@ gsmap.coverage.jaxa <- function(GalParams){
             end_d <- paste0(end_d, dek)
         }
     }else{
-        end_d <- gsmap.jaxa.dates(url, GalParams$login, 'directory')
+        end_d <- gsmap.jaxa.dates(url, login, 'directory')
         if(is.null(end_d)) return(out)
         end_d <- end_d[length(end_d)]
         url <- paste0(url, end_d, '/')
-        end_d <- gsmap.jaxa.dates(url, GalParams$login, 'directory')
+        end_d <- gsmap.jaxa.dates(url, login, 'directory')
         if(is.null(end_d)) return(out)
         end_d <- end_d[length(end_d)]
         url <- paste0(url, end_d, '/')
-        end_d <- gsmap.jaxa.dates(url, GalParams$login, 'file', info$fileformat)
+        end_d <- gsmap.jaxa.dates(url, login, 'file', info$fileformat)
         if(is.null(end_d)) return(out)
         end_d <- end_d[length(end_d)]
     }
@@ -375,18 +394,34 @@ gsmap.info.jaxa <- function(GalParams){
          start_d = start_d, pars = pars)
 }
 
-gsmap.jaxa.table <- function(url, login){
+gsmap.jaxa.table <- function(url, login, GUI = TRUE){
+    login <- gsmap.normalize.login(login)
     handle <- curl::new_handle()
     curl::handle_setopt(handle, username = login$usr, password = login$pwd,
                         ftp_use_epsv = TRUE, dirlistonly = TRUE)
     conn <- try(curl::curl(url = url, open = "r", handle = handle), silent = TRUE)
+
+    # Some FTP endpoints reject EPSV for directory listing; retry with PASV mode.
+    if(inherits(conn, "try-error")){
+        curl::handle_setopt(handle, ftp_use_epsv = FALSE, dirlistonly = TRUE)
+        conn <- try(curl::curl(url = url, open = "r", handle = handle), silent = TRUE)
+    }
+
     on.exit({
         curl::handle_reset(handle)
-        close(conn)
+        if(inherits(conn, "connection")) close(conn)
     })
 
     if(inherits(conn, "try-error")){
-        Insert.Messages.Out(conn[1], TRUE, "e", TRUE)
+        msg <- gsub('[\r\n]', '', conn[1])
+        kind <- gsmap.classify.ftp.error(msg)
+        if(kind == "auth"){
+            Insert.Messages.Out("GSMaP FTP authentication failed. Use UID only in username (e.g. rainmap) and verify password.", TRUE, "e", GUI)
+        }else if(kind == "network"){
+            Insert.Messages.Out("GSMaP FTP connection failed. Check internet/VPN/firewall and retry.", TRUE, "e", GUI)
+        }else{
+            Insert.Messages.Out(msg, TRUE, "e", GUI)
+        }
         return(NULL)
     }
 
@@ -394,8 +429,45 @@ gsmap.jaxa.table <- function(url, login){
     return(tmp)
 }
 
-gsmap.jaxa.dates <- function(url, login, type, fileformat = NA){
-    tmp <- gsmap.jaxa.table(url, login)
+gsmap.classify.ftp.error <- function(msg){
+    msg <- tolower(msg)
+
+    if(grepl("(^|[^0-9])530([^0-9]|$)|login incorrect|authentication failed|access denied|not logged in", msg)){
+        return("auth")
+    }
+
+    if(grepl("(^|[^0-9])550([^0-9]|$)|no such file|file unavailable|couldn't open file|not found", msg)){
+        return("missing")
+    }
+
+    if(grepl("timed out|failed to connect|could not resolve host|connection refused|network is unreachable", msg)){
+        return("network")
+    }
+
+    return("other")
+}
+
+gsmap.normalize.login <- function(login){
+    usr <- trimws(login$usr)
+    pwd <- trimws(login$pwd)
+
+    if(grepl("^ftp://", usr, ignore.case = TRUE)){
+        auth <- sub("^ftp://", "", usr, ignore.case = TRUE)
+        auth <- strsplit(auth, "/", fixed = TRUE)[[1]][1]
+        if(grepl("@", auth, fixed = TRUE)){
+            usr <- sub("@.*$", "", auth)
+        }else{
+            usr <- auth
+        }
+    }
+
+    usr <- sub("@hokusai\\.eorc\\.jaxa\\.jp$", "", usr, ignore.case = TRUE)
+
+    list(usr = usr, pwd = pwd)
+}
+
+gsmap.jaxa.dates <- function(url, login, type, fileformat = NA, GUI = TRUE){
+    tmp <- gsmap.jaxa.table(url, login, GUI = GUI)
     if(length(tmp) == 0) return(NULL)
 
     if(type == 'file'){
@@ -415,9 +487,14 @@ gsmap.jaxa.dates <- function(url, login, type, fileformat = NA){
 
 #################################################################################
 
-gsmap.download.data <- function(lnk, dest, ncfl, bbox, handle, pars)
+gsmap.download.data <- function(lnk, dest, ncfl, bbox, login, pars, GUI = TRUE)
 {
     xx <- basename(dest)
+    handle <- curl::new_handle()
+    curl::handle_setopt(handle,
+                        username = login$usr,
+                        password = login$pwd)
+    on.exit(curl::handle_reset(handle))
 
     dc <- try(curl::curl_download(lnk, dest, handle = handle), silent = TRUE)
     if(!inherits(dc, "try-error")){
@@ -434,6 +511,16 @@ gsmap.download.data <- function(lnk, dest, ncfl, bbox, handle, pars)
         }
     }else{
         msg <- gsub('[\r\n]', '', dc[1])
+        kind <- gsmap.classify.ftp.error(msg)
+
+        if(kind == "auth"){
+            Insert.Messages.Out("GSMaP FTP authentication failed. Use UID only in username (e.g. rainmap) and verify password.", TRUE, "e", GUI)
+        }else if(kind == "missing"){
+            Insert.Messages.Out(paste("GSMaP file not found on FTP:", basename(dest)), TRUE, "w", GUI)
+        }else if(kind == "network"){
+            Insert.Messages.Out("GSMaP FTP connection failed. Check internet/VPN/firewall and retry.", TRUE, "e", GUI)
+        }
+
         tmpdir <- dirname(dirname(dest))
         error_files <- file.path(tmpdir, 'error.txt')
         cat(msg, file = error_files, sep = '\n', append = TRUE)
