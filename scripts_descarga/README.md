@@ -70,7 +70,7 @@ Implementa la logica equivalente a CDT para ERA5-Land horario con seleccion de v
 (`--variables`), por ejemplo:
 
 - `evp` (evaporation)
-- `pet` (potential evaporation)
+- `pet` (potential evapotranspiration; variable ERA5 `pev`, salida `pet_YYYYMMDDHH.nc`)
 - `tair`, `wind`, `prcp`, etc.
 
 ## Script de blanqueo NetCDF por shapefile
@@ -306,13 +306,13 @@ python3 scripts_descarga/persiann_cdr_ccs_to_cdt.py \
   --verbose
 ```
 
-### 11) ERA5-Land 1Hr (evapotranspiracion)
+### 11) ERA5-Land 1Hr (evapotranspiracion potencial)
 
 ```bash
 python3 scripts_descarga/era5_land_1hr_to_cdt.py \
   --start 2020010100 \
   --end 2020010123 \
-  --variables evp \
+  --variables pet \
   --minlon -75 --maxlon -70 --minlat -15 --maxlat -10 \
   --outdir . \
   --verbose

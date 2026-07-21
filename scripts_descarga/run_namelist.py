@@ -47,7 +47,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     p.add_argument(
         "--only",
         default="",
-        help="Comma-separated job names to run, for example gpm_early_daily,era5_land_evp.",
+        help="Comma-separated job names to run, for example gpm_early_daily,era5_land_pet.",
     )
     p.add_argument(
         "--dry-run",
