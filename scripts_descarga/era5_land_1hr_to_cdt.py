@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
 import subprocess
 import sys
 import time
@@ -17,6 +18,7 @@ from typing import Dict, List, Sequence
 import netCDF4 as nc
 import numpy as np
 
+from defaults import DEFAULT_BBOX_HELP, DEFAULT_MAXLAT, DEFAULT_MAXLON, DEFAULT_MINLAT, DEFAULT_MINLON
 from env_utils import load_dotenv
 
 
@@ -40,10 +42,10 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     )
     p.add_argument("--start", required=True, help="YYYYMMDDHH")
     p.add_argument("--end", required=True, help="YYYYMMDDHH")
-    p.add_argument("--minlon", type=float, required=True)
-    p.add_argument("--maxlon", type=float, required=True)
-    p.add_argument("--minlat", type=float, required=True)
-    p.add_argument("--maxlat", type=float, required=True)
+    p.add_argument("--minlon", type=float, default=DEFAULT_MINLON, help=DEFAULT_BBOX_HELP)
+    p.add_argument("--maxlon", type=float, default=DEFAULT_MAXLON, help=DEFAULT_BBOX_HELP)
+    p.add_argument("--minlat", type=float, default=DEFAULT_MINLAT, help=DEFAULT_BBOX_HELP)
+    p.add_argument("--maxlat", type=float, default=DEFAULT_MAXLAT, help=DEFAULT_BBOX_HELP)
     p.add_argument(
         "--variables",
         required=True,

@@ -22,6 +22,7 @@ from typing import Dict, Iterable, List, Sequence
 import netCDF4 as nc
 import numpy as np
 
+from defaults import DEFAULT_BBOX_HELP, DEFAULT_MAXLAT, DEFAULT_MAXLON, DEFAULT_MINLAT, DEFAULT_MINLON
 
 DEFAULT_REMOTE = "gdrive"
 DEFAULT_DAILY_FOLDER_ID = "1gWoZ2bK2u5osJ8Iw-dvguZ56Kmz2QWrL"
@@ -78,10 +79,10 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         required=True,
         help="End date: YYYYMMDD for daily, YYYYMM for monthly.",
     )
-    parser.add_argument("--minlon", type=float, required=True)
-    parser.add_argument("--maxlon", type=float, required=True)
-    parser.add_argument("--minlat", type=float, required=True)
-    parser.add_argument("--maxlat", type=float, required=True)
+    parser.add_argument("--minlon", type=float, default=DEFAULT_MINLON, help=DEFAULT_BBOX_HELP)
+    parser.add_argument("--maxlon", type=float, default=DEFAULT_MAXLON, help=DEFAULT_BBOX_HELP)
+    parser.add_argument("--minlat", type=float, default=DEFAULT_MINLAT, help=DEFAULT_BBOX_HELP)
+    parser.add_argument("--maxlat", type=float, default=DEFAULT_MAXLAT, help=DEFAULT_BBOX_HELP)
     parser.add_argument(
         "--remote",
         default=DEFAULT_REMOTE,

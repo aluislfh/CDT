@@ -25,6 +25,7 @@ from typing import Iterable, List, Sequence, Tuple
 import netCDF4 as nc
 import numpy as np
 
+from defaults import DEFAULT_BBOX_HELP, DEFAULT_MAXLAT, DEFAULT_MAXLON, DEFAULT_MINLAT, DEFAULT_MINLON
 from env_utils import load_dotenv
 
 
@@ -96,10 +97,10 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         required=True,
         help="End date: YYYYMMDD for daily, YYYYMM for monthly.",
     )
-    parser.add_argument("--minlon", type=float, required=True)
-    parser.add_argument("--maxlon", type=float, required=True)
-    parser.add_argument("--minlat", type=float, required=True)
-    parser.add_argument("--maxlat", type=float, required=True)
+    parser.add_argument("--minlon", type=float, default=DEFAULT_MINLON, help=DEFAULT_BBOX_HELP)
+    parser.add_argument("--maxlon", type=float, default=DEFAULT_MAXLON, help=DEFAULT_BBOX_HELP)
+    parser.add_argument("--minlat", type=float, default=DEFAULT_MINLAT, help=DEFAULT_BBOX_HELP)
+    parser.add_argument("--maxlat", type=float, default=DEFAULT_MAXLAT, help=DEFAULT_BBOX_HELP)
     parser.add_argument(
         "--outdir",
         default=".",
@@ -386,8 +387,23 @@ def convert_to_cdt_nc(src_file: Path, out_file: Path, spec: ProductSpec) -> None
     with nc.Dataset(src_file, mode="r") as src:
         lon = np.array(src.variables["lon"][:], dtype=np.float64)
         lat = np.array(src.variables["lat"][:], dtype=np.float64)
-        prcp = np.array(src.variables[VAR_ID][:], dtype=np.float64)
+        prcp_var = src.variables[VAR_ID]
+        prcp = np.array(prcp_var[:], dtype=np.float64)
+        prcp_dims = list(prcp_var.dimensions)
         long_name = get_long_name(src, VAR_ID)
+
+    # OPeNDAP keeps the selected time coordinate as a singleton dimension for
+    # some products (notably IMERG monthly).  Reduce singleton dimensions and
+    # then order the remaining grid explicitly as (lon, lat).
+    singleton_axes = [axis for axis, size in enumerate(prcp.shape) if size == 1]
+    for axis in reversed(singleton_axes):
+        prcp = np.squeeze(prcp, axis=axis)
+        prcp_dims.pop(axis)
+    if set(prcp_dims) != {"lon", "lat"} or prcp.ndim != 2:
+        raise ValueError(
+            f"unexpected precipitation dimensions: {tuple(prcp_dims)} shape={prcp.shape}"
+        )
+    prcp = np.transpose(prcp, (prcp_dims.index("lon"), prcp_dims.index("lat")))
 
     if spec.tstep == "monthly":
         yyyymm = out_file.stem.split("_")[-1]
@@ -396,7 +412,6 @@ def convert_to_cdt_nc(src_file: Path, out_file: Path, spec: ProductSpec) -> None
         days_in_month = calendar.monthrange(year, month)[1]
         prcp = prcp * 24.0 * days_in_month
 
-    prcp = np.transpose(prcp)
     write_cdt_precip_nc(out_file, lon, lat, prcp, long_name)
 
 
@@ -467,6 +482,7 @@ def download_one(
     try:
         convert_to_cdt_nc(tmp_file, out_file, spec)
     except Exception as exc:
+        out_file.unlink(missing_ok=True)
         print(f"FAILED: conversion error for {dt}: {exc}", file=sys.stderr)
         return False
     finally:

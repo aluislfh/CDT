@@ -16,6 +16,7 @@ from typing import Iterable, List, Sequence
 import netCDF4 as nc
 import numpy as np
 
+from defaults import DEFAULT_BBOX_HELP, DEFAULT_MAXLAT, DEFAULT_MAXLON, DEFAULT_MINLAT, DEFAULT_MINLON
 
 BASE_URL = "https://persiann.eng.uci.edu/CHRSdata"
 MISSVAL = -9999.0
@@ -110,10 +111,10 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     p.add_argument("--tstep", required=True, choices=["daily", "monthly"])
     p.add_argument("--start", required=True, help="YYYYMMDD (daily) or YYYYMM (monthly)")
     p.add_argument("--end", required=True, help="YYYYMMDD (daily) or YYYYMM (monthly)")
-    p.add_argument("--minlon", type=float, required=True)
-    p.add_argument("--maxlon", type=float, required=True)
-    p.add_argument("--minlat", type=float, required=True)
-    p.add_argument("--maxlat", type=float, required=True)
+    p.add_argument("--minlon", type=float, default=DEFAULT_MINLON, help=DEFAULT_BBOX_HELP)
+    p.add_argument("--maxlon", type=float, default=DEFAULT_MAXLON, help=DEFAULT_BBOX_HELP)
+    p.add_argument("--minlat", type=float, default=DEFAULT_MINLAT, help=DEFAULT_BBOX_HELP)
+    p.add_argument("--maxlat", type=float, default=DEFAULT_MAXLAT, help=DEFAULT_BBOX_HELP)
     p.add_argument("--outdir", default=".")
     p.add_argument("--keep-original", action="store_true")
     p.add_argument("--verbose", action="store_true")

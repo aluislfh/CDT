@@ -134,6 +134,13 @@ Hay una plantilla en `.env.example`.
 
 El `.env` no se sube al repo; `.env.example` si.
 
+### Area geografica por defecto para descargas
+
+Si no se especifica `--minlon`, `--maxlon`, `--minlat` y `--maxlat`, los scripts principales de descarga usan por defecto el bbox de Panama:
+
+- lon: `-84.2312` a `-75.9853`
+- lat: `6.721` a `10.114`
+
 ## Namelist para ejecucion por lotes
 
 Hay una plantilla en `download_namelist.ini` y un ejecutor en `scripts_descarga/run_namelist.py`.

@@ -26,6 +26,8 @@ import numpy as np
 import rasterio
 from rasterio.windows import from_bounds
 
+from defaults import DEFAULT_BBOX_HELP, DEFAULT_MAXLAT, DEFAULT_MAXLON, DEFAULT_MINLAT, DEFAULT_MINLON
+
 
 BASE_URL = "https://data.chc.ucsb.edu/products"
 
@@ -82,10 +84,10 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         required=True,
         help="End date: YYYYMMDD for daily, YYYYMM for monthly.",
     )
-    parser.add_argument("--minlon", type=float, required=True)
-    parser.add_argument("--maxlon", type=float, required=True)
-    parser.add_argument("--minlat", type=float, required=True)
-    parser.add_argument("--maxlat", type=float, required=True)
+    parser.add_argument("--minlon", type=float, default=DEFAULT_MINLON, help=DEFAULT_BBOX_HELP)
+    parser.add_argument("--maxlon", type=float, default=DEFAULT_MAXLON, help=DEFAULT_BBOX_HELP)
+    parser.add_argument("--minlat", type=float, default=DEFAULT_MINLAT, help=DEFAULT_BBOX_HELP)
+    parser.add_argument("--maxlat", type=float, default=DEFAULT_MAXLAT, help=DEFAULT_BBOX_HELP)
     parser.add_argument(
         "--outdir",
         default=".",
