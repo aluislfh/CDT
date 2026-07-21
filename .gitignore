@@ -45,5 +45,17 @@ rsconnect/
 .*
 !/.gitignore
 !/.gitattributes
+!/.env.example
 
 R/cdtTest_import.R
+
+
+CHIRPSv2_daily/
+CHIRPSv2_monthly/
+ERA5_1Hr_Land/
+GSMaP_CLM_daily/
+GSMaP_CLM_monthly/
+MSWEP_Past_v2.8_daily/
+MSWEP_Past_v2.8_monthly/
+PERSIANN-CDR_daily/
+PERSIANN-CDR_monthly/

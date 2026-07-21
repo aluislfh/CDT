@@ -26,7 +26,7 @@ mswep.download.gdrive <- function(GalParams, nbfile = 3, GUI = TRUE, verbose = T
     ncfiles <- file.path(extrdir, info$ncfiles)
 
     ret <- cdt.download.data(destfiles, destfiles, ncfiles, nbfile, GUI, verbose,
-                             data.name, mswep.download.data, datadir = info$dirpath,
+                             data.name, mswep.download.data, folder_id = info$folder_id,
                              bbox = GalParams$bbox, email = GalParams$login$usr)
 
     return(ret)
@@ -48,24 +48,24 @@ mswep.coverage.gdrive <- function(GalParams){
 
     options(googledrive_quiet = TRUE)
     googledrive::drive_auth(email = GalParams$login$usr)
-    mtype <- "mimeType='application/x-netcdf'"
-    tmp1 <- try(googledrive::drive_ls(path = info$dirpath, n_max = 5,
-                                      order_by = "name", q = mtype),
+
+    tmp1 <- try(googledrive::drive_find(path = googledrive::as_id(info$folder_id),
+                                        pattern = "\\.nc$", type = "file"),
                 silent = TRUE)
     if(inherits(tmp1, "try-error")){
         Insert.Messages.Out(tmp1[1], TRUE, "e", TRUE)
         return(out)
     }
-    tmp2 <- try(googledrive::drive_ls(path = info$dirpath, n_max = 5,
-                                      order_by = "name desc", q = mtype),
-                silent = TRUE)
-    if(inherits(tmp2, "try-error")){
-        Insert.Messages.Out(tmp2[1], TRUE, "e", TRUE)
+
+    if(nrow(tmp1) == 0){
+        Insert.Messages.Out(paste("No MSWEP files found in folder:", info$folder_id), TRUE, "w", TRUE)
         return(out)
     }
 
+    tmp1 <- tmp1[order(tmp1$name), ]
+
     start_d <- extract_filename_dates(tmp1$name, info$fileformat)
-    end_d <- extract_filename_dates(tmp2$name, info$fileformat)
+    end_d <- extract_filename_dates(rev(tmp1$name), info$fileformat)
 
     if(GalParams$tstep == "hourly"){
         start_d <- as.POSIXct(start_d, format = '%Y%j%H', tz = 'UTC')
@@ -100,17 +100,20 @@ mswep.info.gdrive <- function(GalParams){
         if(GalParams$minhour == 3){
             if(GalParams$rfe.src == "mswep.nrt-gb"){
                 dataname <- 'MSWEP_NRT_v2.8'
-                dirpath <- 'MSWEP_V280/NRT/3hourly'
+                dirpath <- 'NRT/3hourly'
+                folder_id <- '1yzUyue4Law-deT8NjPe4pcFzuSB_FMrv'
                 fileformat <- '%s%s.%s.nc'
                 ncformat <- 'mswep_v2.8_%s%s%s%s.nc'
             }else if(GalParams$rfe.src == "mswep.past-gb"){
                 dataname <- 'MSWEP_Past_v2.8'
-                dirpath <- 'MSWEP_V280/Past/3hourly'
+                dirpath <- 'Past/3hourly'
+                folder_id <- '1nBJFXqyQuWLvCh0xrBi89bpn-WG92iMV'
                 fileformat <- '%s%s.%s.nc'
                 ncformat <- 'mswep_v2.8_%s%s%s%s.nc'
             }else if(GalParams$rfe.src == "mswep.pastng-gb"){
                 dataname <- 'MSWEP_Past_nogauge_v2.8'
-                dirpath <- 'MSWEP_V280/Past_nogauge/3hourly'
+                dirpath <- 'Past_nogauge/3hourly'
+                folder_id <- '1QzLe6EX4txOdf8lnY5l-ofLxKInvBgaL'
                 fileformat <- '%s%s.%s.nc'
                 ncformat <- 'mswep_nogauge_v2.8_%s%s%s%s.nc'
             }else return(NULL)
@@ -122,17 +125,20 @@ mswep.info.gdrive <- function(GalParams){
     }else if(GalParams$tstep == "daily"){
         if(GalParams$rfe.src == "mswep.nrt-gb"){
             dataname <- 'MSWEP_NRT_v2.8'
-            dirpath <- 'MSWEP_V280/NRT/Daily'
+            dirpath <- 'NRT/Daily'
+            folder_id <- '1yzUyue4Law-deT8NjPe4pcFzuSB_FMrv'
             fileformat <- '%s%s.nc'
             ncformat <- 'mswep_v2.8_%s%s%s.nc'
         }else if(GalParams$rfe.src == "mswep.past-gb"){
             dataname <- 'MSWEP_Past_v2.8'
-            dirpath <- 'MSWEP_V280/Past/Daily'
+            dirpath <- 'Past/Daily'
+            folder_id <- '1nBJFXqyQuWLvCh0xrBi89bpn-WG92iMV'
             fileformat <- '%s%s.nc'
             ncformat <- 'mswep_v2.8_%s%s%s.nc'
         }else if(GalParams$rfe.src == "mswep.pastng-gb"){
             dataname <- 'MSWEP_Past_nogauge_v2.8'
-            dirpath <- 'MSWEP_V280/Past_nogauge/Daily'
+            dirpath <- 'Past_nogauge/Daily'
+            folder_id <- '1QzLe6EX4txOdf8lnY5l-ofLxKInvBgaL'
             fileformat <- '%s%s.nc'
             ncformat <- 'mswep_nogauge_v2.8_%s%s%s.nc'
         }else return(NULL)
@@ -144,17 +150,20 @@ mswep.info.gdrive <- function(GalParams){
     }else if(GalParams$tstep == "monthly"){
         if(GalParams$rfe.src == "mswep.nrt-gb"){
             dataname <- 'MSWEP_NRT_v2.8'
-            dirpath <- 'MSWEP_V280/NRT/Monthly'
+            dirpath <- 'NRT/Monthly'
+            folder_id <- '1yzUyue4Law-deT8NjPe4pcFzuSB_FMrv'
             fileformat <- '%s%s.nc'
             ncformat <- 'mswep_v2.8_%s%s.nc'
         }else if(GalParams$rfe.src == "mswep.past-gb"){
             dataname <- 'MSWEP_Past_v2.8'
-            dirpath <- 'MSWEP_V280/Past/Monthly'
+            dirpath <- 'Past/Monthly'
+            folder_id <- '1nBJFXqyQuWLvCh0xrBi89bpn-WG92iMV'
             fileformat <- '%s%s.nc'
             ncformat <- 'mswep_v2.8_%s%s.nc'
         }else if(GalParams$rfe.src == "mswep.pastng-gb"){
             dataname <- 'MSWEP_Past_nogauge_v2.8'
-            dirpath <- 'MSWEP_V280/Past_nogauge/Monthly'
+            dirpath <- 'Past_nogauge/Monthly'
+            folder_id <- '1QzLe6EX4txOdf8lnY5l-ofLxKInvBgaL'
             fileformat <- '%s%s.nc'
             ncformat <- 'mswep_nogauge_v2.8_%s%s.nc'
         }else return(NULL)
@@ -165,28 +174,31 @@ mswep.info.gdrive <- function(GalParams){
         data.tres <- GalParams$tstep
     }else return(NULL)
 
-    list(dirpath = dirpath, fileformat = fileformat, filename = filename,
-         dataname = dataname, ncfiles = ncfiles, data.tres = data.tres)
+    list(dirpath = dirpath, folder_id = folder_id, fileformat = fileformat,
+         filename = filename, dataname = dataname, ncfiles = ncfiles,
+         data.tres = data.tres)
 }
 
-mswep.download.data <- function(lnk, dest, ncfl, datadir,
+mswep.download.data <- function(lnk, dest, ncfl, folder_id,
                                 bbox, email, GUI = TRUE)
 {
     googledrive::drive_auth(email = email)
     xx <- basename(dest)
-    query <- paste0("name = '", xx, "'")
-    id_file <- try(googledrive::drive_ls(path = datadir, q = query), silent = TRUE)
+    id_file <- try(googledrive::drive_find(path = googledrive::as_id(folder_id),
+                                           pattern = paste0('^', mswep.escape.regex(xx), '$'),
+                                           type = 'file'),
+                   silent = TRUE)
     if(inherits(id_file, "try-error")){
         Insert.Messages.Out(id_file[1], TRUE, "e", GUI)
         return(xx)
     }
-    if(length(id_file$id) == 0){
-        msg <- paste('No file:', paste0(datadir, '/', xx), 'found.')
+    if(nrow(id_file) == 0){
+        msg <- paste('No file:', paste0(folder_id, '/', xx), 'found.')
         Insert.Messages.Out(msg, TRUE, "w", GUI)
         return(xx)
     }
 
-    res <- try(googledrive::drive_download(id_file, path = dest, overwrite = TRUE), silent = TRUE)
+    res <- try(googledrive::drive_download(id_file[1, ], path = dest, overwrite = TRUE), silent = TRUE)
     if(!inherits(res, "try-error")){
         ret <- mswep.extract.region(dest, ncfl, bbox)
         if(ret == 0) xx <- NULL
@@ -233,4 +245,8 @@ mswep.extract.region <- function(dest, ncfl, bbox){
     }
 
     return(ret)
+}
+
+mswep.escape.regex <- function(x){
+    gsub("([][{}()+*^$.|\\\\?])", "\\\\\\1", x)
 }

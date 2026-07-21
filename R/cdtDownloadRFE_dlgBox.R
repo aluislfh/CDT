@@ -61,6 +61,10 @@ rfe.need.usrpwd <- function(src, tstep, minhour){
 
     usrpwd <- if(urllog == "") FALSE else TRUE
 
+    if(grepl("^mswep\\.", src)){
+        usrpwd <- FALSE
+    }
+
     statepwd <- if(usrpwd) 'normal' else 'disabled'
 
     if(grepl("^mswep\\.", src)){
