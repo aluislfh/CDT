@@ -55,9 +55,14 @@ scripts_descarga/__pycache__/
 CHIRPSv2_daily/
 CHIRPSv2_monthly/
 ERA5_1Hr_Land/
+GPM_L3_IMERG_V07_EARLY_daily/
+GPM_L3_IMERG_V07_FINAL_daily/
+GPM_L3_IMERG_V07_FINAL_monthly/
 GSMaP_CLM_daily/
 GSMaP_CLM_monthly/
 MSWEP_Past_v2.8_daily/
 MSWEP_Past_v2.8_monthly/
+PERSIANN-CCS_daily/
+PERSIANN-CCS_monthly/
 PERSIANN-CDR_daily/
 PERSIANN-CDR_monthly/
