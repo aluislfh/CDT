@@ -27,6 +27,7 @@ import numpy as np
 
 from defaults import DEFAULT_BBOX_HELP, DEFAULT_MAXLAT, DEFAULT_MAXLON, DEFAULT_MINLAT, DEFAULT_MINLON
 from env_utils import load_dotenv
+from netcdf_utils import is_valid_cdt_netcdf
 
 
 OPENDAP_BASE = "https://gpm1.gesdisc.eosdis.nasa.gov/opendap"
@@ -446,6 +447,10 @@ def download_one(
     out_name = build_output_name(spec, dt)
     out_file = outdir / out_name
     tmp_file = outdir / f"tmp_{out_name}"
+
+    if is_valid_cdt_netcdf(out_file, ["precip"]):
+        print(f"SKIP: valid output already exists: {out_file}")
+        return True
 
     if spec.tstep == "daily":
         source_candidates = build_daily_source_candidates(spec, dt)

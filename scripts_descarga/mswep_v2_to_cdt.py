@@ -23,6 +23,7 @@ import netCDF4 as nc
 import numpy as np
 
 from defaults import DEFAULT_BBOX_HELP, DEFAULT_MAXLAT, DEFAULT_MAXLON, DEFAULT_MINLAT, DEFAULT_MINLON
+from netcdf_utils import is_valid_cdt_netcdf
 
 DEFAULT_REMOTE = "gdrive"
 DEFAULT_DAILY_FOLDER_ID = "1gWoZ2bK2u5osJ8Iw-dvguZ56Kmz2QWrL"
@@ -326,6 +327,21 @@ def main(argv: Sequence[str]) -> int:
     orig_dir.mkdir(parents=True, exist_ok=True)
     extr_dir.mkdir(parents=True, exist_ok=True)
 
+    pending_dates = []
+    for d in dates:
+        out_nc = extr_dir / target_output_filename(spec, d)
+        if is_valid_cdt_netcdf(out_nc, ["precip"]):
+            print(f"SKIP: valid output already exists: {out_nc}")
+        else:
+            pending_dates.append(d)
+
+    if not pending_dates:
+        print(
+            f"Done. Converted: {len(dates)}/{len(dates)}. Missing in Drive: 0. "
+            f"Failed: 0. Output dir: {extr_dir}"
+        )
+        return 0
+
     try:
         remote_map = list_remote_nc_files(args.remote, folder_id)
     except Exception as exc:
@@ -335,7 +351,7 @@ def main(argv: Sequence[str]) -> int:
     missing_remote = 0
     failures = 0
 
-    for d in dates:
+    for d in pending_dates:
         src_name = target_source_filename(spec, d)
         out_name = target_output_filename(spec, d)
 

@@ -180,6 +180,10 @@ python3 scripts_descarga/run_namelist.py \
 Cada producto conserva su propia ventana temporal. `--jobs` controla productos
 simultaneos, no descargas individuales dentro de un producto.
 
+Las descargas son reanudables: antes de bajar cada fecha se valida el NetCDF de
+salida. Los archivos completos se muestran como `SKIP`; los ausentes, vacios,
+truncados o estructuralmente invalidos se descargan de nuevo.
+
 Notas:
 
 - por defecto agrega automaticamente `--start`, `--end`, `--minlon`, `--maxlon`, `--minlat`, `--maxlat`, `--outdir` y `--verbose` cuando existen en el namelist

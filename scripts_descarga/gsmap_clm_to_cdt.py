@@ -24,6 +24,7 @@ import numpy as np
 
 from defaults import DEFAULT_BBOX_HELP, DEFAULT_MAXLAT, DEFAULT_MAXLON, DEFAULT_MINLAT, DEFAULT_MINLON
 from env_utils import load_dotenv
+from netcdf_utils import is_valid_cdt_netcdf
 
 
 FTP_BASE = "ftp://hokusai.eorc.jaxa.jp"
@@ -330,6 +331,10 @@ def process_one(
 
     src_gz = orig_dir / remote_name
     out_nc = extr_dir / out_name
+
+    if is_valid_cdt_netcdf(out_nc, ["precip"]):
+        print(f"SKIP: valid output already exists: {out_nc}")
+        return True
 
     if source == "ftp":
         url = ftp_url(spec, dt)

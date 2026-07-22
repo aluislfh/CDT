@@ -27,6 +27,7 @@ import rasterio
 from rasterio.windows import from_bounds
 
 from defaults import DEFAULT_BBOX_HELP, DEFAULT_MAXLAT, DEFAULT_MAXLON, DEFAULT_MINLAT, DEFAULT_MINLON
+from netcdf_utils import is_valid_cdt_netcdf
 
 
 BASE_URL = "https://data.chc.ucsb.edu/products"
@@ -380,6 +381,10 @@ def download_one(
 ) -> bool:
     out_name = build_output_name(spec, dt)
     out_nc = outdir / out_name
+
+    if is_valid_cdt_netcdf(out_nc, ["precip"]):
+        print(f"SKIP: valid output already exists: {out_nc}")
+        return True
 
     sources = build_sources_for_date(
         spec,

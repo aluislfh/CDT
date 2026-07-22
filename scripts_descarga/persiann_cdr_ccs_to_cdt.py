@@ -17,6 +17,7 @@ import netCDF4 as nc
 import numpy as np
 
 from defaults import DEFAULT_BBOX_HELP, DEFAULT_MAXLAT, DEFAULT_MAXLON, DEFAULT_MINLAT, DEFAULT_MINLON
+from netcdf_utils import is_valid_cdt_netcdf
 
 BASE_URL = "https://persiann.eng.uci.edu/CHRSdata"
 MISSVAL = -9999.0
@@ -287,6 +288,10 @@ def main(argv: Sequence[str]) -> int:
         url = f"{BASE_URL}/{spec.dirpath}/{sname}"
         local_src = orig_dir / sname
         out_nc = extr_dir / oname
+
+        if is_valid_cdt_netcdf(out_nc, ["precip"]):
+            print(f"SKIP: valid output already exists: {out_nc}")
+            continue
 
         if args.verbose:
             print(f"Downloading: {url}")
