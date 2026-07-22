@@ -198,13 +198,19 @@ def local_source_path(local_root: Path, spec: ProductSpec, dt: str) -> Path:
     raise FileNotFoundError(f"Local file not found: {fname}")
 
 
-def curl_download_ftp(url: str, dest: Path, user: str, password: str) -> bool:
+def curl_download_ftp(url: str, dest: Path, user: str, password: str) -> tuple[bool, str]:
     cmd = [
         "curl",
         "--fail",
         "--silent",
         "--show-error",
         "--location",
+        "--retry",
+        "3",
+        "--retry-delay",
+        "2",
+        "--connect-timeout",
+        "30",
         "--user",
         f"{user}:{password}",
         "--output",
@@ -212,7 +218,8 @@ def curl_download_ftp(url: str, dest: Path, user: str, password: str) -> bool:
         url,
     ]
     proc = subprocess.run(cmd, capture_output=True, text=True)
-    return proc.returncode == 0
+    error = (proc.stderr or proc.stdout).strip()
+    return proc.returncode == 0, error
 
 
 def read_gsmap_binary(dat_gz_file: Path, tstep: str) -> np.ndarray:
@@ -328,9 +335,11 @@ def process_one(
         url = ftp_url(spec, dt)
         if verbose:
             print(f"Downloading: {url}")
-        ok = curl_download_ftp(url, src_gz, ftp_user, ftp_password)
+        ok, error = curl_download_ftp(url, src_gz, ftp_user, ftp_password)
         if not ok:
-            print(f"FAILED: could not download {dt}", file=sys.stderr)
+            src_gz.unlink(missing_ok=True)
+            detail = f": {error}" if error else ""
+            print(f"FAILED: could not download {dt}{detail}", file=sys.stderr)
             return False
     else:
         try:

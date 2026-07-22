@@ -8,6 +8,7 @@ import configparser
 import shlex
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Sequence
@@ -58,6 +59,16 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         "--continue-on-error",
         action="store_true",
         help="Continue running remaining jobs after a failure.",
+    )
+    p.add_argument(
+        "--jobs",
+        type=int,
+        default=1,
+        metavar="N",
+        help=(
+            "Maximum number of enabled products to run simultaneously "
+            "(default: 1, sequential namelist order)."
+        ),
     )
     return p.parse_args(argv)
 
@@ -189,6 +200,10 @@ def select_jobs(jobs: Iterable[Job], only: str) -> List[Job]:
 
 def main(argv: Sequence[str]) -> int:
     args = parse_args(argv)
+    if args.jobs < 1:
+        print("--jobs must be greater than or equal to 1.", file=sys.stderr)
+        return 2
+
     namelist_path = Path(args.namelist).expanduser().resolve()
     if not namelist_path.is_file():
         print(f"Namelist not found: {namelist_path}", file=sys.stderr)
@@ -215,29 +230,63 @@ def main(argv: Sequence[str]) -> int:
     print(f"Namelist: {namelist_path}")
     print(f"Jobs selected: {len(jobs)} | enabled: {len(runnable_jobs)} | disabled: {len(skipped_jobs)}")
 
-    failures = 0
-    executed = 0
     for job in jobs:
         if not job.enabled:
             print(f"SKIP [{job.name}] disabled")
-            continue
 
-        executed += 1
-        print(f"RUN  [{job.name}] {job.description}")
-        print(f"CMD  {format_command(job.command)}")
-        if args.dry_run:
-            continue
+    failures = 0
+    executed = 0
 
-        proc = subprocess.run(job.command, cwd=job.working_dir)
-        if proc.returncode != 0:
-            failures += 1
-            print(f"FAIL [{job.name}] exit code {proc.returncode}", file=sys.stderr)
-            if stop_on_error:
+    if args.dry_run:
+        for job in runnable_jobs:
+            executed += 1
+            print(f"RUN  [{job.name}] {job.description}")
+            print(f"CMD  {format_command(job.command)}")
+    else:
+        pending = list(runnable_jobs)
+        running: List[tuple[Job, subprocess.Popen]] = []
+        stop_scheduling = False
+
+        while pending or running:
+            while pending and len(running) < args.jobs and not stop_scheduling:
+                job = pending.pop(0)
+                executed += 1
+                print(f"RUN  [{job.name}] {job.description}", flush=True)
+                print(f"CMD  {format_command(job.command)}", flush=True)
+                proc = subprocess.Popen(job.command, cwd=job.working_dir)
+                running.append((job, proc))
+
+            completed: List[tuple[Job, subprocess.Popen]] = []
+            for job, proc in running:
+                if proc.poll() is not None:
+                    completed.append((job, proc))
+
+            if not completed:
+                if running:
+                    time.sleep(0.1)
+                    continue
                 break
-        else:
-            print(f"OK   [{job.name}]")
 
-    print(f"Summary: executed={executed}, failures={failures}, dry_run={args.dry_run}")
+            for job, proc in completed:
+                running.remove((job, proc))
+                if proc.returncode != 0:
+                    failures += 1
+                    print(f"FAIL [{job.name}] exit code {proc.returncode}", file=sys.stderr, flush=True)
+                    if stop_on_error:
+                        stop_scheduling = True
+                else:
+                    print(f"OK   [{job.name}]", flush=True)
+
+        if stop_scheduling and pending:
+            print(
+                f"STOP: {len(pending)} enabled job(s) not started after a failure.",
+                file=sys.stderr,
+            )
+
+    print(
+        f"Summary: executed={executed}, failures={failures}, "
+        f"dry_run={args.dry_run}, jobs={args.jobs}"
+    )
     return 0 if failures == 0 else 1
 
 

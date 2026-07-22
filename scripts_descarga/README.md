@@ -163,8 +163,22 @@ Ejecutar solo algunas tareas:
 ```bash
 python3 scripts_descarga/run_namelist.py \
   --namelist download_namelist.ini \
-  --only gpm_early_daily,era5_land_evp
+  --only gpm_early_daily,era5_land_pet
 ```
+
+Por defecto las tareas habilitadas se ejecutan secuencialmente, en el orden del
+namelist. Cada tarea procesa su rango `start`/`end` completo antes de comenzar la
+siguiente. Para ejecutar hasta cuatro productos completos en paralelo:
+
+```bash
+python3 scripts_descarga/run_namelist.py \
+  --namelist download_namelist.ini \
+  --jobs 4 \
+  --continue-on-error
+```
+
+Cada producto conserva su propia ventana temporal. `--jobs` controla productos
+simultaneos, no descargas individuales dentro de un producto.
 
 Notas:
 
